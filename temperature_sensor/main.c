@@ -21,13 +21,13 @@
 #include "i2c.h"
 #include "app_lorawan.h"
 #include "gpio.h"
+#include "sys_app.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
 /* USER CODE END Includes */
-float temp_c = 0;
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
@@ -45,8 +45,10 @@ float temp_c = 0;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static const uint8_t TMP102_ADDR = 0x48 << 1; // Use 8-bit address
-static const uint8_t REG_TEMP = 0x00;
+//static const uint8_t TMP102_ADDR = 0x48 << 1; // Use 8-bit address
+//static const uint8_t REG_TEMP = 0x00;
+float temp_c = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,9 +69,7 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	HAL_StatusTypeDef ret;
-	uint8_t buf[12];
-	int16_t val;
+
 
   /* USER CODE END 1 */
 
@@ -101,35 +101,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	  MX_LoRaWAN_Process();
-     // Tell TMP102 that we want to read from the temperature register
-     buf[0] = REG_TEMP;
-     ret = HAL_I2C_Master_Transmit(&hi2c2, TMP102_ADDR, buf, 1, HAL_MAX_DELAY);
-     if ( ret != HAL_OK ) {
-       strcpy((char*)buf, "Error Tx\r\n");
-     } else {
+	  APP_LOG(TS_ON, VLEVEL_L, "X\r\n");
 
-       // Read 2 bytes from the temperature register
-       ret = HAL_I2C_Master_Receive(&hi2c2, TMP102_ADDR, buf, 2, HAL_MAX_DELAY);
-       if ( ret != HAL_OK ) {
-         strcpy((char*)buf, "Error Rx\r\n");
-       } else {
-
-         //Combine the bytes
-         val = ((int16_t)buf[0] << 4) | (buf[1] >> 4);
-
-         // Convert to 2's complement, since temperature can be negative
-         if ( val > 0x7FF ) {
-           val |= 0xF000;
-         }
-
-         // Convert to float temperature value (Celsius)
-         temp_c = val * 0.0625;
-
-         // Convert temperature to decimal format
-         temp_c *= 100;
-       }
-     }
     /* USER CODE END WHILE */
 
 
@@ -187,6 +162,43 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+float temp_read()
+{
+
+	// Tell TMP102 that we want to read from the temperature register
+   HAL_StatusTypeDef ret;
+   uint8_t buf[12];
+   int16_t val;
+   buf[0] = REG_TEMP;
+   ret = HAL_I2C_Master_Transmit(&hi2c2, TMP102_ADDR, buf, 1, 2000);
+   if ( ret != HAL_OK ) {
+     strcpy((char*)buf, "Error Tx\r\n");
+   } else {
+
+     // Read 2 bytes from the temperature register
+	 ret = HAL_I2C_Master_Receive(&hi2c2, TMP102_ADDR, buf, 2, HAL_MAX_DELAY);
+     if ( ret != HAL_OK ) {
+       strcpy((char*)buf, "Error Rx\r\n");
+     } else {
+
+       //Combine the bytes
+       val = ((int16_t)buf[0] << 4) | (buf[1] >> 4);
+       // Convert to 2's complement, since temperature can be negative
+       if ( val > 0x7FF ) {
+         val |= 0xF000;
+       }
+       // Convert to float temperature value (Celsius)
+       temp_c = val * 0.0625;
+       return temp_c;
+     }
+   }
+}
+
+
 
 /* USER CODE END 4 */
 
